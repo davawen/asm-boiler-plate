@@ -191,38 +191,53 @@ print_hex:
 ;; (number) -> void
 print_dec:
 	
-	push rbp
+	push rbp ; create stack frame
 	mov rbp, rsp
 
-	; [rsp] -> number
-	; [rsp + 8] -> loop_index
-	sub rsp, 16
+	mov rax, QWORD [rbp + 16] ; Move argument into rax
 
-	%define s_number QWORD [rsp]
-	%define s_loop_index QWORD [rsp + 8]
-	
-	mov rax, QWORD [rbp + 16] ; Extract argument to 
-	mov number, rax ; Move it into stack variable
-
+	mov rcx, 0
 	.loop:
-		
+		xor rdx, rdx ; nullify rdx
 
+		mov r8, 10
+		idiv r8 ; divide assembled 128 bit register rdx:rax by r8
+		; but rdx is 0, so divide rax by r8
+		; quotient goes in rax, remainder goes in rdx
+
+		add rdx, 0x30 ; offset remainder to ASCII '0'
+
+		; push printable remainder to stack
+		sub rsp, 1
+		mov BYTE [rsp], dl ; ASCII characters are one byte wide, so we only want that
+
+		; continue until remaining number is 0
+		inc rcx
 		cmp rax, 0
 		jnz .loop
-		
+	
+	mov rax, rsp ; the stack grows downwards, so the characters pushed in reverse order are now in the good order
 
-	mov rsp, rbp
+	push rcx ; length of string
+	push rax ; pointer to start of string ↑
+	call puts ; print it
+
+	; no need to clean up, we leave the stack frame just after
+
+	mov rsp, rbp ; leave stack frame
 	pop rbp
 
 	ret
-	%undef s_loop_index
-	%undef s_number
 
 _start:
-	
-	push 0x453FA2
-	call print_hex
+
+	push 15493
+	call print_dec
+	pop
 
 	mov rax, 60
 	xor rdi, rdi
 	syscall
+
+section .rodata
+msg: db "test", 10
